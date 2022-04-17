@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+
+  bangular-db:
+    container_name: bangular-db
+    image: 'postgres:13.6'
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=1234
+    volumes:
+      - bangular-db-volume:/var/lib/postgresql/data
+
+volumes:
+  bangular-db-volume:

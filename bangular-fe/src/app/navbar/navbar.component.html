@@ -1,0 +1,22 @@
+<nav class="p-4 shadow-xl fixed top-0 left-0 w-full z-10 bg-white">
+  <div class="flex flex-row justify-between items-center w-[90%] mx-auto">
+    <div>
+      <p>logo</p>
+    </div>
+    <button class="flex flex-row items-center gap-8 menu" (click)="menuToggle()">
+      <p>link</p>
+      <p>link</p>
+      <p>link</p>
+      <div class="ham-menu flex-col gap-1">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    </button>
+  </div>
+  <div class="responsive-menu" [ngClass]="status ? 'menu-open' : ''">
+    <p>link</p>
+    <p>link</p>
+    <p>link</p>
+  </div>
+</nav>
