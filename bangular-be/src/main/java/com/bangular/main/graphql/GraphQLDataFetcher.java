@@ -17,14 +17,13 @@ public class GraphQLDataFetcher {
     @Autowired
     private UserServiceImpl userService;
 
-    DataFetcher<List<User>> getUsers() {
+    public DataFetcher<List<User>> getUsers() {
         return resolvedData -> {
-            List<User> userEntities = userService.getUsers();
-            return userEntities;
+            return userService.getUsers();
         };
     }
 
-    DataFetcher<List<User>> getUsersByRoles() {
+    public DataFetcher<List<User>> getUsersByRoles() {
         return resolvedData -> {
             List<User> userEntities = userService.getUsers();
             if(resolvedData.getArguments().containsKey("roles")){

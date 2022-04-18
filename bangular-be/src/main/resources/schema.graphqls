@@ -2,6 +2,10 @@ schema {
     query: Query
 }
 
+type Query {
+    getUsers: [User]
+}
+
 type User {
     name: String
     username: String
@@ -12,8 +16,4 @@ type User {
 type Role {
     id: ID
     name: String
-}
-
-type Query {
-    getUsers: [User]
 }
