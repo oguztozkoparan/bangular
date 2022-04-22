@@ -4,34 +4,26 @@ import com.bangular.main.entity.User;
 import com.bangular.main.services.UserServiceImpl;
 import graphql.schema.DataFetcher;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
-//@RequiredArgsConstructor
+@RequiredArgsConstructor
 public class GraphQLDataFetcher {
 
-    @Autowired
-    private UserServiceImpl userService;
+    private final UserServiceImpl userService;
 
     public DataFetcher<List<User>> getUsers() {
-        return resolvedData -> {
+        return dataFetchingEnvironment -> {
             return userService.getUsers();
         };
     }
 
-    public DataFetcher<List<User>> getUsersByRoles() {
-        return resolvedData -> {
-            List<User> userEntities = userService.getUsers();
-            if(resolvedData.getArguments().containsKey("roles")){
-                List<Integer> roles = resolvedData.getArgument("roles");
-                userEntities = userEntities.stream().filter(user -> roles.contains(user.getRoles())).collect(Collectors.toList());
-            }
-            return userEntities;
+    public DataFetcher<User> getUserByUsername() {
+        return dataFetchingEnvironment -> {
+            String username = dataFetchingEnvironment.getArgument("username");
+            return userService.getUser(username);
         };
     }
-
 }

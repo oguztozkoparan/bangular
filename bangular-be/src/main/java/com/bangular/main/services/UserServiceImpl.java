@@ -30,6 +30,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
+    public String healthCheck() {
+        return "It works.";
+    }
+
     @Override
     public User saveUser(UserDTO userDTO) {
         log.info("Saving new user {} to the database.", userDTO.getUsername());

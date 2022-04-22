@@ -1,0 +1,16 @@
+<div class="mt-40">
+  <div *ngIf="loading || error" class="h-screen -mt-40 flex justify-center items-center">
+    <div *ngIf="loading">
+      Loading...
+    </div>
+    <div *ngIf="error">
+      ERROR
+    </div>
+  </div>
+
+  <div *ngIf="user" class="p-4 shadow-2xl rounded-xl my-10 w-1/3 mx-auto">
+    <p>{{user.name}}</p>
+    <p>{{user.username}}</p>
+    <p>{{user.email}}</p>
+  </div>
+</div>
