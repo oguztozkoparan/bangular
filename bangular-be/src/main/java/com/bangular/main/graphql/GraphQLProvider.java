@@ -32,12 +32,12 @@ import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 @RequiredArgsConstructor
 public class GraphQLProvider {
 
-    private static final String GRAPHQL_SCHEMA_FILE = "/schema.graphql";
+    private static final String GRAPHQL_SCHEMA_FILE = "/schema.graphqls";
     private GraphQL graphQL;
     private GraphQLSchema graphQLSchema;
     private final GraphQLDataFetcher graphQLDataFetcher;
-    public DatabaseMetaData databaseMetaData;
-    public ResultSet resultSet = null;
+    private DatabaseMetaData databaseMetaData;
+    private ResultSet resultSet = null;
     public ArrayList<String> tables = null;
     public SchemaPrinter schemaPrinter = new SchemaPrinter();
     @Value("${spring.datasource.url}")
@@ -59,13 +59,11 @@ public class GraphQLProvider {
         Path graphQLSchemaFilePath = Paths.get(
                 Objects.requireNonNull(this.getClass().getResource(GRAPHQL_SCHEMA_FILE)).toURI());
         GraphQLSchema localSchema = buildSchema(graphQLSchemaFilePath);
-        graphQLSchema = localSchema;
-        this.graphQL = GraphQL.newGraphQL(graphQLSchema).build();
-//        getVisitorSub(schema);
+        this.graphQLSchema = localSchema;
+        this.graphQL = GraphQL.newGraphQL(this.graphQLSchema).build();
 
         databaseMetaData = getDBMetaData();
-        schemaTranformation();
-
+        schemaTransformation();
     }
 
     private GraphQLTypeVisitorStub getVisitorSub(GraphQLObjectType graphQLObjectType) {
@@ -75,76 +73,52 @@ public class GraphQLProvider {
                                                            TraverserContext<GraphQLSchemaElement> context) {
                 GraphQLCodeRegistry.Builder codeRegistryBuilder = context.getVarFromParents(
                         GraphQLCodeRegistry.Builder.class);
-//                if(objectType.hasAppliedDirective("specialDirective")) {
-//                GraphQLObjectType newObjectType = buildChangedObjectType(objectType, codeRegistryBuilder);
-
+                List<GraphQLFieldDefinition> graphQLFieldDefinitions = new ArrayList<>(graphQLObjectType.getFields());
+//                GraphQLObjectType newObjectType = objectType.transform(builder -> builder
+//                        .name(graphQLObjectType.getName())
+//                        .fields(graphQLObjectType.getFieldDefinitions())
+//                        .build());
                 DataFetcher newDataFetcher = dataFetchingEnvironment -> {
-                  return userService.healthCheck();
+                    return userService.healthCheck();
                 };
-                FieldCoordinates fieldCoordinates = FieldCoordinates.coordinates(
-                        Objects.requireNonNull(objectType.getName()),
-                        String.valueOf(objectType.getFields()));
-                codeRegistryBuilder.dataFetcher(fieldCoordinates, newDataFetcher);
 
-                return insertAfter(context, graphQLObjectType);
-//                return changeNode(context, graphQLObjectType);
-//                }
-//                return TraversalControl.CONTINUE;
+                FieldCoordinates fieldCoordinates = null;
+                for (GraphQLFieldDefinition fieldDefinition : graphQLFieldDefinitions) {
+                    fieldCoordinates = FieldCoordinates.coordinates(
+                            objectType.getName(), fieldDefinition.getName());
+                    codeRegistryBuilder.dataFetcher(fieldCoordinates, newDataFetcher);
+                }
+
+//                return insertAfter(context, newObjectType);
+                return changeNode(context, graphQLObjectType);
             }
-
-//            public GraphQLObjectType buildChangedObjectType(GraphQLObjectType objectType,
-//                                                            GraphQLCodeRegistry.Builder graphQLCodeRegistry) {
-//                GraphQLFieldDefinition newField = GraphQLFieldDefinition.newFieldDefinition()
-//                        .name("ufuk").type(Scalars.GraphQLString).build();
-//
-//                GraphQLObjectType newObjectType = objectType.transform(builder -> builder.field(newField));
-//
-//                DataFetcher newDataFetcher = dataFetchingEnvironment -> {
-//                    return userService.getUser("dustbreaker");
-//                };
-//
-////                objectType.getName(), newField.getName()
-//                FieldCoordinates.
-//                FieldCoordinates coordinates = FieldCoordinates.coordinates(objectType.getName(),objectType.getFields());
-//                graphQLCodeRegistry.dataFetcher(coordinates, newDataFetcher);
-//                return newObjectType;
-//            }
         };
-
-//        graphQLSchema = SchemaTransformer.transformSchema(schema, visitorStub);
-
-//        this.graphQL = GraphQL.newGraphQL(graphQLSchema).build();
     }
 
-    public void schemaTranformation() throws SQLException {
+    public void schemaTransformation() throws SQLException {
         resultSet = databaseMetaData.getTables(null, null, null, new String[]{"TABLE"});
-        tables = new ArrayList();
+        tables = new ArrayList<>();
 
         while (resultSet.next()) {
             tables.add(resultSet.getString("TABLE_NAME"));
         }
 
-        List<Map<String, GraphQLObjectType>> createdSchema = new ArrayList<>();
+        List<List<GraphQLObjectType>> createdSchemas = new ArrayList<>();
         for (String table : tables) {
-            createdSchema.add(createSchema(table));
+            createdSchemas.add(createSchema(table));
         }
-        System.out.println(createdSchema);
-//        createdSchema.forEach(map -> map.entrySet().forEach(value -> {
-////            graphQLSchema.transform(builder -> builder.query(value.getValue())); // WARNING: It does not do what we want
-////            SchemaTransformer.transformSchema(graphQLSchema, visitorStub);
-//        }));
-        for (Map<String, GraphQLObjectType> stringGraphQLObjectTypeMap : createdSchema) {
-            for (Map.Entry<String, GraphQLObjectType> stringGraphQLObjectTypeEntry : stringGraphQLObjectTypeMap.entrySet()) {
-                GraphQLTypeVisitorStub visitorSub = getVisitorSub(stringGraphQLObjectTypeEntry.getValue());
-                SchemaTransformer.transformSchema(graphQLSchema, visitorSub);
+//        System.out.println(createdSchemas);
+        for (List<GraphQLObjectType> graphQLObjectTypeList : createdSchemas) {
+            for (GraphQLObjectType graphQLObjectType : graphQLObjectTypeList) {
+                GraphQLTypeVisitorStub visitorSub = getVisitorSub(graphQLObjectType);
+                this.graphQLSchema = SchemaTransformer.transformSchema(this.graphQLSchema, visitorSub);
             }
         }
-
-        this.graphQL = GraphQL.newGraphQL(graphQLSchema).build();
+        this.graphQL = GraphQL.newGraphQL(this.graphQLSchema).build();
     }
 
-    public Map<String, GraphQLObjectType> createSchema(String tableName) throws SQLException {
-        Map<String, GraphQLObjectType> returnedMap = new HashMap<>();
+    public List<GraphQLObjectType> createSchema(String tableName) throws SQLException {
+        List<GraphQLObjectType> objectTypes = new ArrayList<>();
 
         resultSet = databaseMetaData.getColumns(null, null, (String) tableName, null);
         GraphQLObjectType.Builder builder = GraphQLObjectType.newObject();
@@ -154,17 +128,17 @@ public class GraphQLProvider {
                     .name(tableName.toLowerCase())
                     .field(GraphQLFieldDefinition.newFieldDefinition()
                             .name(resultSet.getString("COLUMN_NAME"))
-                            .type(GraphQLNonNull.nonNull(ReturnType(resultSet.getString("TYPE_NAME")))))
+                            .type(GraphQLNonNull.nonNull(returnType(resultSet.getString("TYPE_NAME")))))
                     .build();
         }
 
-        returnedMap.put(schemaPrinter.print(builder.build()), builder.build());
-        return returnedMap;
+        objectTypes.add(builder.build());
+        return objectTypes;
     }
 
     private GraphQLSchema buildSchema(Path graphQLSchemaFilePath) throws IOException {
-        String graphQLSchema = Files.readString(graphQLSchemaFilePath);
-        TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(graphQLSchema);
+        String graphQLSchemaString = Files.readString(graphQLSchemaFilePath);
+        TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(graphQLSchemaString);
         RuntimeWiring runtimeWiring = buildWiring();
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         return schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
@@ -175,6 +149,7 @@ public class GraphQLProvider {
                 .type(newTypeWiring("Query")
                         .dataFetcher("getUsers", graphQLDataFetcher.getUsers())
                         .dataFetcher("getUserByUsername", graphQLDataFetcher.getUserByUsername()))
+                .type(newTypeWiring("User"))
                 .build();
     }
 
@@ -183,7 +158,7 @@ public class GraphQLProvider {
         return connection.getMetaData();
     }
 
-    public static GraphQLScalarType ReturnType(@NotNull String type) {
+    public static GraphQLScalarType returnType(@NotNull String type) {
         // Translate postgres types to graphql scalar types
         if (type.equals("int8")) {
             return Scalars.GraphQLInt;

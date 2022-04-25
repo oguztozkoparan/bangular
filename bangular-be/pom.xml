@@ -94,6 +94,12 @@
 			<scope>test</scope>
 		</dependency>
 
+<!--		<dependency>-->
+<!--			<groupId>com.netflix.graphql.dgs</groupId>-->
+<!--			<artifactId>graphql-dgs-spring-boot-starter</artifactId>-->
+<!--			<version>4.9.25</version>-->
+<!--		</dependency>-->
+
 		<dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>

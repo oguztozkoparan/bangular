@@ -3,19 +3,19 @@ schema {
 }
 
 type Query {
-    getUsers: [User!]!
-    getUserByUsername(username: String!): User
+    getUsers: [CUser!]!
+    getUserByUsername(username: String!): CUser
 }
 
-type User {
+type CUser {
     id: ID!
     name: String!
     username: String!
     email: String!
-    roles: [Role!]
+    roles: [CRole!]
 }
 
-type Role {
+type CRole {
     id: ID!
     name: String!
 }
